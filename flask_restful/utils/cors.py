@@ -1,6 +1,8 @@
 from datetime import timedelta
-from flask import make_response, request, current_app
+from flask import make_response, request, current_app, Response, jsonify
+from flask.ext.restful.utils import unpack
 from functools import update_wrapper
+import json
 
 def crossdomain(origin=None, methods=None, headers=None,
                 max_age=21600, attach_to_all=True,
@@ -29,7 +31,16 @@ def crossdomain(origin=None, methods=None, headers=None,
             if automatic_options and request.method == 'OPTIONS':
                 resp = current_app.make_default_options_response()
             else:
-                resp = make_response(f(*args, **kwargs))
+                """
+                http://flask.pocoo.org/snippets/56/ Julien Guery comment
+                """
+                res = f(*args, **kwargs) 
+                if isinstance(res, Response):
+                    resp = res 
+                else: 
+                    data, code, headers = unpack(res) 
+                    resp = make_response(json.dumps(data), code, headers)
+                    print resp
             if not attach_to_all and request.method != 'OPTIONS':
                 return resp
 
@@ -38,6 +49,8 @@ def crossdomain(origin=None, methods=None, headers=None,
             h['Access-Control-Allow-Origin'] = origin
             h['Access-Control-Allow-Methods'] = get_methods()
             h['Access-Control-Max-Age'] = str(max_age)
+            h['Access-Control-Allow-Credentials'] = 'true'
+            h['Content-Type'] = 'application/json; charset=utf-8'
             if headers is not None:
                 h['Access-Control-Allow-Headers'] = headers
             return resp
